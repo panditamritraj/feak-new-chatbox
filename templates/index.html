@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NewsSense — fake news detector</title>
+
+  <!-- Modern single-file styles -->
+  <style>
+    :root{
+      --bg-1: #071029;
+      --bg-2: #081327;
+      --card: rgba(255,255,255,0.04);
+      --glass-border: rgba(255,255,255,0.06);
+      --accent-from:#6C5CE7; /* purple */
+      --accent-to:#00D4FF;   /* cyan */
+      --good: #2dd4bf;
+      --bad:  #ff6b6b;
+      --muted: rgba(255,255,255,0.55);
+      --glass-blur: 12px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      background: radial-gradient(1200px 600px at 10% 10%, rgba(12,20,40,0.5), transparent),
+                  linear-gradient(180deg,var(--bg-1),var(--bg-2));
+      color: #e6eef8;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    /* App layout */
+    .app {
+      max-width:1200px;
+      margin:28px auto;
+      display:grid;
+      grid-template-columns: 1fr 360px;
+      gap:20px;
+      padding:24px;
+      align-items:start;
+    }
+
+    header.topbar {
+      grid-column: 1 / -1;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:6px;
+    }
+
+    .brand{
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+    .logo{ width:46px; height:46px; border-radius:10px; object-fit:cover; box-shadow:0 6px 20px rgba(0,0,0,0.6); }
+    .brand h1{ margin:0; font-size:20px; letter-spacing:0.2px; }
+    .brand .subtitle{ margin:0; color:var(--muted); font-size:13px; margin-top:2px; }
+
+    .status{
+      background: linear-gradient(90deg,var(--accent-from),var(--accent-to));
+      padding:8px 12px;
+      border-radius:12px;
+      font-weight:600;
+      box-shadow:0 6px 30px rgba(110,76,255,0.08);
+      font-size:13px;
+    }
+
+    /* Glass cards */
+    .card {
+      background: var(--card);
+      border-radius:14px;
+      padding:18px;
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(var(--glass-blur));
+      box-shadow: 0 6px 30px rgba(2,6,23,0.6);
+    }
+
+    main.main {
+      min-height:560px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    /* Chat area */
+    #chat {
+      flex:1;
+      overflow:auto;
+      padding:20px;
+      border-radius:14px;
+      position:relative;
+    }
+    #chat.card{ padding:0; } /* if used with card class */
+
+    .msg{ display:flex; gap:12px; margin-bottom:14px; align-items:flex-end; }
+    .msg.user{ justify-content:flex-end; }
+    .bubble{
+      max-width:80%;
+      padding:12px 14px;
+      border-radius:12px;
+      font-size:14px;
+      line-height:1.35;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+    .msg.user .bubble{
+      background: linear-gradient(90deg,var(--accent-from),var(--accent-to));
+      color: #071028;
+      border:none;
+    }
+
+    .bubble.typing{
+      display:flex;
+      gap:6px;
+      align-items:center;
+      width:110px;
+      justify-content:flex-start;
+    }
+    .bubble.typing span{
+      display:inline-block;
+      width:8px; height:8px; border-radius:50%;
+      background: rgba(255,255,255,0.18);
+      animation: blink 1s infinite;
+    }
+    .bubble.typing span:nth-child(2){ animation-delay:0.15s; }
+    .bubble.typing span:nth-child(3){ animation-delay:0.3s; }
+    @keyframes blink { 0% {opacity:0.2} 50%{opacity:1} 100%{opacity:0.2} }
+
+    /* Composer */
+    .composer {
+      display:flex;
+      gap:12px;
+      align-items:flex-end;
+    }
+    textarea#input{
+      flex:1;
+      min-height:46px;
+      resize:vertical;
+      padding:12px 14px;
+      border-radius:12px;
+      border: 1px solid rgba(255,255,255,0.04);
+      background: rgba(4,8,16,0.45);
+      color:inherit;
+      outline:none;
+      font-size:14px;
+    }
+    button#send{
+      border:none;
+      padding:12px 18px;
+      border-radius:12px;
+      background: linear-gradient(90deg,var(--accent-from),var(--accent-to));
+      color:#071028;
+      font-weight:700;
+      cursor:pointer;
+      box-shadow:0 8px 30px rgba(108,92,231,0.16);
+      transition: transform .14s ease, box-shadow .14s ease;
+    }
+    button#send:hover{ transform: translateY(-4px); box-shadow:0 18px 40px rgba(108,92,231,0.22); }
+    button#send:active{ transform: translateY(-1px); }
+
+    /* Mic button (new icon) */
+    .mic-btn{
+      width:44px; height:44px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center;
+      background:transparent; border:1px solid rgba(255,255,255,0.04); cursor:pointer; color:var(--muted);
+      transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+    }
+    .mic-btn:hover{ transform:translateY(-2px); box-shadow:0 10px 24px rgba(12,20,40,0.6); }
+    .mic-btn.listening{ background: linear-gradient(90deg,var(--accent-from),var(--accent-to)); color:#071028; box-shadow:0 18px 36px rgba(108,92,231,0.18);}
+    .mic-icon{ width:18px; height:18px; display:block; fill:currentColor; transition:transform .18s ease; }
+    .mic-btn.listening .mic-icon{ transform:scale(1.08); }
+
+    /* Panel (right side) */
+    aside.panel{ display:flex; flex-direction:column; gap:12px; align-self:stretch; }
+    .card.small{ padding:14px; }
+
+    .result{
+      margin-top:8px;
+      padding:14px;
+      border-radius:10px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border:1px solid rgba(255,255,255,0.03);
+      min-height:58px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      justify-content:center;
+      align-items:flex-start;
+    }
+    .result.empty{ color:var(--muted); font-weight:600; display:flex; align-items:center; justify-content:center; }
+
+    .badge{
+      display:inline-block;
+      padding:6px 10px;
+      border-radius:999px;
+      font-weight:800;
+      font-size:13px;
+      letter-spacing:0.6px;
+    }
+    .badge.good{ background: rgba(45,212,191,0.12); color:var(--good); border:1px solid rgba(45,212,191,0.12); }
+    .badge.bad{ background: rgba(255,107,107,0.09); color:var(--bad); border:1px solid rgba(255,107,107,0.08); }
+
+    .conf{ color:var(--muted); font-weight:600; margin-left:8px; font-size:12px; }
+
+    .confidence-bar{
+      width:100%;
+      height:10px;
+      background: rgba(255,255,255,0.03);
+      border-radius:999px;
+      overflow:hidden;
+      margin-top:6px;
+      border:1px solid rgba(255,255,255,0.02);
+    }
+    .confidence-fill{
+      height:100%;
+      width:0%;
+      transition: width .7s cubic-bezier(.2,.9,.3,1);
+      background: linear-gradient(90deg,var(--accent-from),var(--accent-to));
+    }
+
+    /* History & top words */
+    .history-list, .top-words{ margin:10px 0 0 0; padding:0; list-style:none; display:flex; flex-direction:column; gap:8px; }
+    .history-item{ padding:8px 10px; border-radius:10px; cursor:pointer; font-size:13px; color:var(--muted); background: rgba(255,255,255,0.01); border:1px solid rgba(255,255,255,0.02); }
+    .history-item:hover{ background: rgba(255,255,255,0.02); color: #eaf6ff; }
+
+    .top-words li{ padding:6px 10px; border-radius:8px; background: rgba(255,255,255,0.02); display:flex; justify-content:space-between; font-size:13px; color:var(--muted); }
+
+    /* footer */
+    .footer{ text-align:center; color:var(--muted); margin-top:22px; grid-column:1 / -1; font-size:13px; }
+
+    /* Right-side header with small svg animation */
+    .scan-hero{ display:flex; gap:10px; align-items:center; }
+    .scan-hero svg{ width:56px; height:56px; display:block; border-radius:10px; padding:8px; background: linear-gradient(90deg,var(--accent-from),var(--accent-to)); box-shadow: 0 8px 30px rgba(12,20,40,0.5); }
+
+    /* small utilities */
+    .row{ display:flex; gap:8px; align-items:center; justify-content:space-between; }
+    .controls{ display:flex; gap:8px; align-items:center; }
+
+    /* responsive */
+    @media (max-width:980px){
+      .app{ grid-template-columns: 1fr; padding:16px; }
+      aside.panel{ order:2; }
+      header.topbar{ flex-direction:column; align-items:flex-start; gap:12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <img src="/static/logo.png" alt="logo" class="logo" onerror="this.style.display='none'">
+        <div>
+          <h1>NewsSense</h1>
+          <p class="subtitle">AI-powered fake news detector — paste a headline or short article</p>
+        </div>
+      </div>
+      <div class="status">Version 1.0 Ready</div>
+    </header>
+
+    <main class="main card" id="leftColumn">
+      <div id="chat" class="card" style="padding:20px;">
+        <div class="msg bot">
+          <div class="bubble">Hi! Paste a news headline or short article — I'll check it.</div>
+        </div>
+      </div>
+
+      <div class="composer">
+        <textarea id="input" placeholder="Paste news headline or paragraph..." rows="2"></textarea>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <!-- New mic button with SVG icon -->
+            <button id="mic" class="mic-btn" title="Toggle voice input" aria-pressed="false" type="button">
+    <svg class="mic-icon" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+      <path d="M12 14a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v4a3 3 0 0 0 3 3z"/>
+      <path d="M19 11a1 1 0 1 0-2 0 5 5 0 1 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V21H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-3.08A7 7 0 0 0 19 11z"/>
+    </svg>
+</button>
+
+
+            <button id="send" title="Send">Send →</button>
+          </div>
+          <button id="downloadReport" title="Download last report" style="background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;">Download last report (PDF)</button>
+        </div>
+      </div>
+    </main>
+
+    <aside class="panel">
+      <div class="card">
+        <div class="row">
+          <div>
+            <h3 style="margin:0 0 6px 0;">Last result</h3>
+            <div id="lastResult" class="result empty">No result yet</div>
+          </div>
+          <div class="scan-hero" style="align-self:flex-start;">
+            <!-- small scanning SVG for flair -->
+     <div class="simple-avatar" style="
+    width:60px;
+    height:60px;
+    border-radius:12px;
+    overflow:hidden;
+    box-shadow:0 6px 20px rgba(0,0,0,0.35);
+    border:1px solid rgba(255,255,255,0.08);
+">
+    <img src="/static/avtar.png" alt="avatar" style="
+        width:100%;
+        height:100%;
+        object-fit:cover;
+    ">
+</div>
+
+
+          </div>
+        </div>
+
+        <div style="margin-top:10px;">
+          <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;">
+            <small style="color:var(--muted)">Confidence</small>
+            <small id="confPercent" style="color:var(--muted)">—</small>
+          </div>
+          <div class="confidence-bar" style="margin-top:8px;">
+            <div id="confidenceFill" class="confidence-fill" style="width:0%"></div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <strong style="font-size:13px">History</strong>
+          <ul id="history" class="history-list" aria-live="polite"></ul>
+        </div>
+
+      </div>
+
+      <div class="card small">
+
+        <h4 style="margin-top:12px;margin-bottom:8px;">Tips</h4>
+        <ul style="color:var(--muted);font-size:13px;">
+          <li>Paste short paragraphs (1–3 sentences) for best results.</li>
+          <li>Test varied headlines to see model confidence and keywords.</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="footer card" style="max-width:1200px;margin:0 auto;background:transparent;border:0;">
+    <small style="color:var(--muted)">Made for college with ❤️ by Aishwarya</small>
+  </footer>
+
+  <!-- jsPDF (for client-side PDF generation) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+/* ---------- helpers & UI ------------ */
+const chat = document.getElementById('chat');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('send');
+const lastResult = document.getElementById('lastResult');
+const topWords = document.getElementById('topWords');
+const historyList = document.getElementById('history');
+const confidenceFill = document.getElementById('confidenceFill');
+const confPercent = document.getElementById('confPercent');
+const downloadBtn = document.getElementById('downloadReport');
+const micBtn = document.getElementById('mic');
+const micIcon = micBtn.querySelector('.mic-icon');
+
+let lastPrediction = null;
+let history = [];
+let recognition = null;
+let listening = false;
+
+/* sanitize */
+function escapeHtml(text) {
+  return text.replace(/[&<>"']/g, function(m) {
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m];
+  });
+}
+
+/* append message */
+function appendMessage(side, html){
+  const wrapper = document.createElement('div');
+  wrapper.className = 'msg ' + side;
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = html;
+  wrapper.appendChild(bubble);
+  chat.appendChild(wrapper);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+/* typing skeleton */
+function showTyping(){
+  const t = document.createElement('div');
+  t.className = 'msg bot';
+  t.innerHTML = '<div class="bubble typing"><span></span><span></span><span></span></div>';
+  chat.appendChild(t);
+  chat.scrollTop = chat.scrollHeight;
+  return t;
+}
+
+/* update last result UI */
+function updateLastResultUI(data){
+  if(!data) {
+    lastResult.className = 'result empty';
+    lastResult.innerHTML = 'No result yet';
+    confidenceFill.style.width = '0%';
+    confPercent.textContent = '—';
+    return;
+  }
+  const label = data.label || 'UNKNOWN';
+  const confRaw = typeof data.confidence === 'number' ? data.confidence : null;
+  const confPct = confRaw !== null ? Math.round(confRaw * 100) : '—';
+
+  const badge = document.createElement('span');
+  badge.className = 'badge ' + (label==='FAKE' ? 'bad' : 'good');
+  badge.textContent = label;
+  lastResult.innerHTML = '';
+  lastResult.className = 'result ' + (label==='FAKE' ? 'fake' : 'real');
+
+  lastResult.appendChild(badge);
+  if(confRaw !== null){
+    const small = document.createElement('small');
+    small.className = 'conf';
+    small.textContent = ` (${confPct}%)`;
+    lastResult.appendChild(small);
+  }
+
+  // update confidence bar
+  const fillPct = confRaw !== null ? Math.max(0, Math.min(100, Math.round(confRaw * 100))) : 0;
+  confidenceFill.style.width = fillPct + '%';
+  confPercent.textContent = (confRaw !== null ? fillPct + '%' : '—');
+
+  // top words
+  topWords.innerHTML = '';
+  if(data.top_words && Array.isArray(data.top_words)){
+    data.top_words.slice(0,8).forEach(item => {
+      const li = document.createElement('li');
+      const score = typeof item[1] !== 'undefined' ? Math.round(item[1]*100)/100 : '';
+      li.textContent = `${item[0]} `;
+      const span = document.createElement('span');
+      span.style.opacity = '0.85';
+      span.style.fontWeight = '700';
+      span.textContent = score ? `(${score})` : '';
+      li.appendChild(span);
+      topWords.appendChild(li);
+    });
+  }
+}
+
+/* maintain history */
+function addToHistory(record){
+  history.unshift(record); // newest first
+  // keep 10
+  history = history.slice(0,10);
+  renderHistory();
+}
+
+function renderHistory(){
+  historyList.innerHTML = '';
+  history.forEach((h, idx) => {
+    const li = document.createElement('li');
+    li.className = 'history-item';
+    li.innerHTML = `<strong style="color:#eaf6ff">${escapeHtml(h.text.slice(0,80))}</strong>
+                    <div style="font-size:12px;color:var(--muted);margin-top:6px">${h.label || '—'} • ${h.confidenceDisplay || '—'}</div>`;
+    li.addEventListener('click', () => {
+      // open chat view of this record
+      appendMessage('user', escapeHtml(h.text));
+      appendMessage('bot', `<span class="badge ${h.label==='FAKE' ? 'bad' : 'good'}">${h.label}</span> <small class="conf">(${h.confidenceDisplay})</small>`);
+    });
+    historyList.appendChild(li);
+  });
+}
+
+/* ---------- PDF report (jsPDF) ---------- */
+async function downloadReport(){
+  if(!lastPrediction){
+    alert('No prediction to download yet.');
+    return;
+  }
+  try {
+    // get jsPDF
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const margin = 40;
+    const maxWidth = doc.internal.pageSize.getWidth() - margin*2;
+    let y = 60;
+
+    // title
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('NewsSense — Analysis Report', margin, y);
+    y += 22;
+
+    doc.setDrawColor(200);
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, margin + maxWidth, y);
+    y += 18;
+
+    // timestamp & meta
+    const d = new Date(lastPrediction.timestamp);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Time: ${d.toLocaleString()}`, margin, y);
+    y += 16;
+
+    doc.text(`Result: ${lastPrediction.label}`, margin, y);
+    y += 14;
+    doc.text(`Confidence: ${lastPrediction.confidenceDisplay}`, margin, y);
+    y += 20;
+
+    // Input (wrap text)
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('Input:', margin, y);
+    y += 14;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+
+    const inputLines = doc.splitTextToSize(lastPrediction.text, maxWidth);
+    doc.text(inputLines, margin, y);
+    y += inputLines.length * 12 + 10;
+
+    // Top keywords
+    doc.setFont('helvetica', 'bold');
+    doc.text('Top keywords:', margin, y);
+    y += 14;
+    doc.setFont('helvetica', 'normal');
+    if(lastPrediction.top_words && lastPrediction.top_words.length){
+      lastPrediction.top_words.slice(0,20).forEach(t => {
+        const txt = `• ${t[0]} (${(typeof t[1] === 'number') ? Math.round(t[1]*100)/100 : t[1]})`;
+        const lines = doc.splitTextToSize(txt, maxWidth);
+        doc.text(lines, margin, y);
+        y += lines.length * 12 + 2;
+        // add new page if needed
+        if(y > doc.internal.pageSize.getHeight() - 80){
+          doc.addPage();
+          y = 60;
+        }
+      });
+    } else {
+      doc.text('- none', margin, y);
+      y += 14;
+    }
+
+    // footer note
+    y = Math.max(y + 20, doc.internal.pageSize.getHeight() - 80);
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text('Note: This PDF contains a demo result generated by NewsSense (college project).', margin, y);
+
+    const filename = `newsense-report-${Date.now()}.pdf`;
+    doc.save(filename);
+  } catch (err) {
+    console.error('PDF error', err);
+    alert('Failed to generate PDF. Open console for details.');
+  }
+}
+
+/* ---------- networking & logic ------------ */
+async function sendText(text){
+  if(!text) return;
+  appendMessage('user', escapeHtml(text));
+  const tNode = showTyping();
+  try{
+    const resp = await fetch('/predict', {
+      method:'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ text })
+    });
+    const data = await resp.json();
+    // remove typing
+    tNode.remove();
+
+    // normalize
+    const label = data.label || 'UNKNOWN';
+    const conf = (typeof data.confidence === 'number') ? data.confidence : null;
+    const confDisplay = conf !== null ? Math.round(conf*100) + '%' : '—';
+
+    // bot reply bubble with badge
+    appendMessage('bot', `<span class="badge ${label==='FAKE' ? 'bad' : 'good'}">${label}</span> <small class="conf">(${confDisplay})</small>`);
+
+    // update panels
+    const record = {
+      text,
+      label,
+      confidence: conf,
+      confidenceDisplay: confDisplay,
+      top_words: Array.isArray(data.top_words) ? data.top_words : [],
+      timestamp: Date.now()
+    };
+    lastPrediction = record;
+    updateLastResultUI(record);
+    addToHistory(record);
+
+    // render top words
+    updateLastResultUI(record);
+
+  } catch(err){
+    tNode.remove();
+    console.error(err);
+    appendMessage('bot', 'Oops! Network error. Make sure Flask is running and /predict is reachable.');
+  }
+}
+
+/* send button + enter key */
+sendBtn.addEventListener('click', () => {
+  const txt = input.value.trim();
+  if(!txt) return;
+  sendText(txt);
+  input.value = '';
+  input.focus();
+});
+
+input.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    sendBtn.click();
+  }
+});
+
+/* download button */
+downloadBtn.addEventListener('click', downloadReport);
+
+/* mic: better icon + listening state */
+if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'en-IN';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.addEventListener('result', (e) => {
+    const t = e.results[0][0].transcript;
+    input.value = (input.value + ' ' + t).trim();
+  });
+  recognition.addEventListener('end', () => {
+    listening = false;
+    micBtn.classList.remove('listening');
+    micBtn.setAttribute('aria-pressed','false');
+  });
+  recognition.addEventListener('error', (e) => {
+    console.warn('Speech error', e);
+    listening = false;
+    micBtn.classList.remove('listening');
+    micBtn.setAttribute('aria-pressed','false');
+  });
+
+  micBtn.addEventListener('click', () => {
+    if(listening){
+      recognition.stop();
+      listening = false;
+      micBtn.classList.remove('listening');
+      micBtn.setAttribute('aria-pressed','false');
+    } else {
+      try {
+        recognition.start();
+        listening = true;
+        micBtn.classList.add('listening');
+        micBtn.setAttribute('aria-pressed','true');
+      } catch (err){
+        console.error(err);
+        alert('Microphone not available.');
+      }
+    }
+  });
+} else {
+  micBtn.addEventListener('click', () => alert('Voice input not supported in this browser.'));
+}
+
+/* small perf: animate the scan path to draw interest */
+(function animateScan(){
+  const path = document.getElementById('scan');
+  if(!path) return;
+  let pos = 0;
+  setInterval(()=>{
+    pos = (pos + 6) % 64;
+    path.setAttribute('d', `M${pos} 34 L${(pos+42)%64} 10`);
+  }, 420);
+})();
+
+/* initial UI */
+updateLastResultUI(null);
+renderHistory();
+</script>
+</body>
+</html>
