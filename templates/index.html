@@ -336,7 +336,7 @@
 
         <h4 style="margin-top:12px;margin-bottom:8px;">Tips</h4>
         <ul style="color:var(--muted);font-size:13px;">
-          <li>Paste short paragraphs (1–3 sentences) for best results.</li>
+          <li>Paste short paragraphs (1-3 sentences) for best results.</li>
           <li>Test varied headlines to see model confidence and keywords.</li>
         </ul>
       </div>
@@ -356,7 +356,7 @@ const chat = document.getElementById('chat');
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('send');
 const lastResult = document.getElementById('lastResult');
-const topWords = document.getElementById('topWords');
+// const topWords = document.getElementById('topWords');
 const historyList = document.getElementById('history');
 const confidenceFill = document.getElementById('confidenceFill');
 const confPercent = document.getElementById('confPercent');
@@ -431,20 +431,22 @@ function updateLastResultUI(data){
   confPercent.textContent = (confRaw !== null ? fillPct + '%' : '—');
 
   // top words
-  topWords.innerHTML = '';
-  if(data.top_words && Array.isArray(data.top_words)){
-    data.top_words.slice(0,8).forEach(item => {
-      const li = document.createElement('li');
-      const score = typeof item[1] !== 'undefined' ? Math.round(item[1]*100)/100 : '';
-      li.textContent = `${item[0]} `;
-      const span = document.createElement('span');
-      span.style.opacity = '0.85';
-      span.style.fontWeight = '700';
-      span.textContent = score ? `(${score})` : '';
-      li.appendChild(span);
-      topWords.appendChild(li);
-    });
-  }
+  // if(topWords){
+  // topWords.innerHTML = '';
+  // if(data.top_words && Array.isArray(data.top_words)){
+  //   data.top_words.slice(0,8).forEach(item => {
+  //     const li = document.createElement('li');
+  //     const score = typeof item[1] !== 'undefined' ? Math.round(item[1]*100)/100 : '';
+  //     li.textContent = `${item[0]} `;
+  //     const span = document.createElement('span');
+  //     span.style.opacity = '0.85';
+  //     span.style.fontWeight = '700';
+  //     span.textContent = score ? `(${score})` : '';
+  //     li.appendChild(span);
+  //     topWords.appendChild(li);
+  //   });
+  // }
+  // }
 }
 
 /* maintain history */
@@ -453,6 +455,7 @@ function addToHistory(record){
   // keep 10
   history = history.slice(0,10);
   renderHistory();
+  saveHistory();
 }
 
 function renderHistory(){
@@ -469,6 +472,24 @@ function renderHistory(){
     });
     historyList.appendChild(li);
   });
+}
+function saveHistory(){
+  try {
+    localStorage.setItem('newsense_history', JSON.stringify(history));
+  } catch (e) {
+    console.error('Error saving history to localStorage', e);
+  }
+}
+
+function loadHistory(){
+  try {
+    const saved = localStorage.getItem('newsense_history');
+    if (saved) {
+      history = JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('Error loading history from localStorage', e);
+  }
 }
 
 /* ---------- PDF report (jsPDF) ---------- */
@@ -598,7 +619,7 @@ async function sendText(text){
   } catch(err){
     tNode.remove();
     console.error(err);
-    appendMessage('bot', 'Oops! Network error. Make sure Flask is running and /predict is reachable.');
+    // appendMessage('bot', 'Oops! Network error. Make sure Flask is running and /predict is reachable.');
   }
 }
 
@@ -679,8 +700,12 @@ if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
 })();
 
 /* initial UI */
-updateLastResultUI(null);
-renderHistory();
+// Define and run a guaranteed initialization function
+(function initializeUI() {
+    loadHistory(); // Load saved data
+    updateLastResultUI(null);
+    renderHistory(); // Render the loaded data
+})(); // <-- The parentheses run the function immediately
 </script>
 </body>
 </html>
