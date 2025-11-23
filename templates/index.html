@@ -57,7 +57,7 @@
       align-items:center;
     }
     .logo{ width:46px; height:46px; border-radius:10px; object-fit:cover; box-shadow:0 6px 20px rgba(0,0,0,0.6); }
-    .brand h1{ margin:0; font-size:20px; letter-spacing:0.2px; }
+    .brand h1{ margin:0; font-size:30px; letter-spacing:0.2px; }
     .brand .subtitle{ margin:0; color:var(--muted); font-size:13px; margin-top:2px; }
 
     .status{
@@ -81,6 +81,7 @@
 
     main.main {
       min-height:560px;
+      max-height: calc(100vh - 150px);
       display:flex;
       flex-direction:column;
       gap:12px;
@@ -89,7 +90,7 @@
     /* Chat area */
     #chat {
       flex:1;
-      overflow:auto;
+      overflow-y:auto;
       padding:20px;
       border-radius:14px;
       position:relative;
@@ -105,8 +106,10 @@
       font-size:14px;
       line-height:1.35;
       background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-      border: 1px solid rgba(255,255,255,0.03);
+      border: 1px solid rgb(255, 255, 255,0.03);
+      
     }
+    
     .msg.user .bubble{
       background: linear-gradient(90deg,var(--accent-from),var(--accent-to));
       color: #071028;
@@ -136,13 +139,14 @@
       gap:12px;
       align-items:flex-end;
     }
+    
     textarea#input{
       flex:1;
       min-height:46px;
       resize:vertical;
       padding:12px 14px;
       border-radius:12px;
-      border: 1px solid rgba(255,255,255,0.04);
+      border: 2px solid rgb(255, 255, 255);
       background: rgba(4,8,16,0.45);
       color:inherit;
       outline:none;
@@ -228,8 +232,23 @@
 
     .top-words li{ padding:6px 10px; border-radius:8px; background: rgba(255,255,255,0.02); display:flex; justify-content:space-between; font-size:13px; color:var(--muted); }
 
+    /* Add this CSS block to your existing <style> section */
+.history-wrapper {
+  /* Set a fixed maximum height. Adjust 250px as needed, 
+     depending on how much space you want the history to take. */
+  max-height: 250px; 
+  /* Enable vertical scrolling when content exceeds the max-height */
+  overflow-y: auto; 
+  /* (Optional) Improve styling for the scrollbar area */
+  padding-right: 8px;
+}
+
+/* Ensure the UL list inside does not add extra padding that breaks the scroll */
+.history-wrapper .history-list {
+  padding-right: 0;
+}
     /* footer */
-    .footer{ text-align:center; color:var(--muted); margin-top:22px; grid-column:1 / -1; font-size:13px; }
+    .footer{ text-align:center; color:var(--muted); margin-top:22px; grid-column:1 / -1; font-size:18px; }
 
     /* Right-side header with small svg animation */
     .scan-hero{ display:flex; gap:10px; align-items:center; }
@@ -253,11 +272,11 @@
       <div class="brand">
         <img src="/static/logo.png" alt="logo" class="logo" onerror="this.style.display='none'">
         <div>
-          <h1>NewsSense</h1>
-          <p class="subtitle">AI-powered fake news detector — paste a headline or short article</p>
+          <h1>News Sense</h1>
+          <p class="subtitle">AI-Powered Fake News Detector </p>
         </div>
       </div>
-      <div class="status">Version 1.0 Ready</div>
+      <div class="status">Version 1.0 Ready!</div>
     </header>
 
     <main class="main card" id="leftColumn">
@@ -270,7 +289,7 @@
       <div class="composer">
         <textarea id="input" placeholder="Paste news headline or paragraph..." rows="2"></textarea>
         <div style="display:flex;flex-direction:column;gap:8px;">
-          <div style="display:flex;gap:8px;align-items:center;">
+          <div style="display:flex;gap:8px;align-items:center;",>
             <!-- New mic button with SVG icon -->
             <button id="mic" class="mic-btn" title="Toggle voice input" aria-pressed="false" type="button">
     <svg class="mic-icon" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
@@ -325,7 +344,7 @@
           </div>
         </div>
 
-        <div style="margin-top:12px;">
+        <div class="history-wrapper" style="margin-top:12px;">
           <strong style="font-size:13px">History</strong>
           <ul id="history" class="history-list" aria-live="polite"></ul>
         </div>
@@ -344,7 +363,7 @@
   </div>
 
   <footer class="footer card" style="max-width:1200px;margin:0 auto;background:transparent;border:0;">
-    <small style="color:var(--muted)">Made for college with ❤️ by Aishwarya</small>
+    <small style="color:var(--muted)">Project by <strong>Aishwarya — BTech ECE-AI (Roll No: 00111182025)</strong></small>
   </footer>
 
   <!-- jsPDF (for client-side PDF generation) -->
@@ -473,24 +492,24 @@ function renderHistory(){
     historyList.appendChild(li);
   });
 }
-function saveHistory(){
-  try {
-    localStorage.setItem('newsense_history', JSON.stringify(history));
-  } catch (e) {
-    console.error('Error saving history to localStorage', e);
-  }
-}
+// function saveHistory(){
+//   try {
+//     localStorage.setItem('newsense_history', JSON.stringify(history));
+//   } catch (e) {
+//     console.error('Error saving history to localStorage', e);
+//   }
+// }
 
-function loadHistory(){
-  try {
-    const saved = localStorage.getItem('newsense_history');
-    if (saved) {
-      history = JSON.parse(saved);
-    }
-  } catch (e) {
-    console.error('Error loading history from localStorage', e);
-  }
-}
+// function loadHistory(){
+//   try {
+//     const saved = localStorage.getItem('newsense_history');
+//     if (saved) {
+//       history = JSON.parse(saved);
+//     }
+//   } catch (e) {
+//     console.error('Error loading history from localStorage', e);
+//   }
+// }
 
 /* ---------- PDF report (jsPDF) ---------- */
 async function downloadReport(){
@@ -702,7 +721,7 @@ if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
 /* initial UI */
 // Define and run a guaranteed initialization function
 (function initializeUI() {
-    loadHistory(); // Load saved data
+    // loadHistory(); // Load saved data
     updateLastResultUI(null);
     renderHistory(); // Render the loaded data
 })(); // <-- The parentheses run the function immediately
